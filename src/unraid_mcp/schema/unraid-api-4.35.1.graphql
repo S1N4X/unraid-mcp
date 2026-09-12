@@ -726,7 +726,7 @@ type InfoCpu {
   socket: String
   cache: JSON
   flags: [String!]
-  topology: [[?]!]!
+  topology: [[[Int!]!]!]!
   packages: CpuPackages!
 }
 
