@@ -118,6 +118,28 @@ class TestArrayDomain:
         assert "items" in result
         assert result["_meta"]["total"] >= 1
 
+    async def test_array_start(self) -> None:
+        ctx = _make_ctx()
+        result = await execute_action(ctx, "array", "start", {})
+        assert result["array"]["setState"]["state"] == "STARTED"
+
+    async def test_array_stop(self) -> None:
+        ctx = _make_ctx()
+        result = await execute_action(ctx, "array", "stop", {})
+        assert result["array"]["setState"]["state"] == "STARTED"  # mock always returns STARTED
+
+    @pytest.mark.parametrize(
+        "action",
+        ["parity_start", "parity_pause", "parity_resume", "parity_cancel"],
+    )
+    async def test_parity_mutations(self, action: str) -> None:
+        ctx = _make_ctx()
+        params: dict[str, Any] = {}
+        if action == "parity_start":
+            params["correct"] = False
+        result = await execute_action(ctx, "array", action, params)
+        assert result is not None
+
 
 class TestDockerDomain:
     async def test_list_returns_containers(self) -> None:
@@ -140,7 +162,29 @@ class TestDockerDomain:
     async def test_restart_is_stop_then_start(self) -> None:
         ctx = _make_ctx()
         result = await execute_action(ctx, "docker", "restart", {"id": "container:abc123"})
-        assert result is not None
+        # restart = stop + start; returns the start result (final state)
+        assert result["docker"]["start"]["state"] == "RUNNING"
+
+    async def test_start_returns_running_state(self) -> None:
+        ctx = _make_ctx()
+        result = await execute_action(ctx, "docker", "start", {"id": "container:abc123"})
+        assert result["docker"]["start"]["state"] == "RUNNING"
+        assert result["docker"]["start"]["status"] == "Up 1 second"
+
+    async def test_stop_returns_exited_state(self) -> None:
+        ctx = _make_ctx()
+        result = await execute_action(ctx, "docker", "stop", {"id": "container:abc123"})
+        assert result["docker"]["stop"]["state"] == "EXITED"
+
+    async def test_pause_returns_paused_state(self) -> None:
+        ctx = _make_ctx()
+        result = await execute_action(ctx, "docker", "pause", {"id": "container:abc123"})
+        assert result["docker"]["pause"]["state"] == "PAUSED"
+
+    async def test_unpause_returns_running_state(self) -> None:
+        ctx = _make_ctx()
+        result = await execute_action(ctx, "docker", "unpause", {"id": "container:abc123"})
+        assert result["docker"]["unpause"]["state"] == "RUNNING"
 
 
 class TestVmDomain:
@@ -174,6 +218,12 @@ class TestVmDomain:
         with pytest.raises(InvalidParamsError):
             await execute_action(ctx, "vm", "get", {})
 
+    @pytest.mark.parametrize("action", ["start", "stop", "pause", "resume", "reboot"])
+    async def test_vm_write_actions(self, action: str) -> None:
+        ctx = _make_ctx()
+        result = await execute_action(ctx, "vm", action, {"id": "vm:win10"})
+        assert result["vm"][action] is True
+
 
 class TestShareDomain:
     async def test_list_returns_shares(self) -> None:
@@ -194,6 +244,24 @@ class TestNotificationDomain:
         ctx = _make_ctx()
         result = await execute_action(ctx, "notification", "overview", {})
         assert isinstance(result, dict)
+
+    async def test_archive_notification(self) -> None:
+        ctx = _make_ctx()
+        result = await execute_action(ctx, "notification", "archive", {"id": "notif:msg1"})
+        assert result["archiveNotification"]["id"] == "notif:msg1"
+        assert result["archiveNotification"]["type"] == "ARCHIVE"
+
+    async def test_unread_notification(self) -> None:
+        ctx = _make_ctx()
+        result = await execute_action(ctx, "notification", "unread", {"id": "notif:msg1"})
+        assert result["unreadNotification"]["id"] == "notif:msg1"
+        assert result["unreadNotification"]["type"] == "UNREAD"
+
+    async def test_archive_all(self) -> None:
+        ctx = _make_ctx()
+        result = await execute_action(ctx, "notification", "archive_all", {})
+        assert result["archiveAll"]["unread"]["total"] == 0
+        assert result["archiveAll"]["archive"]["total"] == 19
 
 
 class TestMetricsDomain:
@@ -278,3 +346,41 @@ class TestHandleUnraid:
         parsed = json.loads(result)
         assert isinstance(parsed, dict)
         assert "info" in parsed
+
+    async def test_write_with_confirm(self) -> None:
+        result = await handle_unraid(
+            "docker",
+            "start",
+            SETTINGS,
+            UnraidClient(SETTINGS, transport=make_transport()),
+            params={"id": "container:abc123"},
+            confirm=True,
+        )
+        parsed = json.loads(result)
+        assert parsed["docker"]["start"]["state"] == "RUNNING"
+
+    async def test_write_refused_without_confirm(self) -> None:
+        from unraid_mcp.errors import ConfirmationRequiredError
+
+        with pytest.raises(ConfirmationRequiredError):
+            await handle_unraid(
+                "docker",
+                "start",
+                SETTINGS,
+                UnraidClient(SETTINGS, transport=make_transport()),
+                params={"id": "container:abc123"},
+                confirm=False,
+            )
+
+    async def test_write_refused_readonly_settings(self) -> None:
+        from unraid_mcp.errors import WriteDisabledError
+
+        with pytest.raises(WriteDisabledError):
+            await handle_unraid(
+                "docker",
+                "start",
+                READ_ONLY_SETTINGS,
+                UnraidClient(READ_ONLY_SETTINGS, transport=make_transport()),
+                params={"id": "container:abc123"},
+                confirm=True,
+            )
