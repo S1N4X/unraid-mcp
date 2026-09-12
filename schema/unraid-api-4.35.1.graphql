@@ -1,0 +1,1802 @@
+enum ArrayDiskFsColor { GREEN_ON GREEN_BLINK BLUE_ON BLUE_BLINK YELLOW_ON YELLOW_BLINK RED_ON RED_OFF GREY_OFF }
+
+enum ArrayDiskStatus { DISK_NP DISK_OK DISK_NP_MISSING DISK_INVALID DISK_WRONG DISK_DSBL DISK_NP_DSBL DISK_DSBL_NEW DISK_NEW }
+
+enum ArrayDiskType { DATA PARITY BOOT FLASH CACHE }
+
+enum ArrayState { STARTED STOPPED NEW_ARRAY RECON_DISK DISABLE_DISK SWAP_DSBL INVALID_EXPANSION PARITY_NOT_BIGGEST TOO_MANY_MISSING_DISKS NEW_DISK_TOO_SMALL NO_DATA_DISKS }
+
+enum ArrayStateInputState { START STOP }
+
+enum AuthAction { CREATE_ANY CREATE_OWN READ_ANY READ_OWN UPDATE_ANY UPDATE_OWN DELETE_ANY DELETE_OWN }
+
+enum AuthorizationOperator { EQUALS CONTAINS ENDS_WITH STARTS_WITH }
+
+enum AuthorizationRuleMode { OR AND }
+
+enum ConfigErrorState { UNKNOWN_ERROR INELIGIBLE INVALID NO_KEY_SERVER WITHDRAWN }
+
+enum ContainerPortType { TCP UDP }
+
+enum ContainerState { RUNNING PAUSED EXITED }
+
+enum DiskFsType { XFS BTRFS VFAT ZFS EXT4 NTFS }
+
+enum DiskInterfaceType { SAS SATA USB PCIE UNKNOWN }
+
+enum DiskSmartStatus { OK UNKNOWN }
+
+enum NotificationImportance { ALERT INFO WARNING }
+
+enum NotificationType { UNREAD ARCHIVE }
+
+enum OnboardingStatus { INCOMPLETE UPGRADE DOWNGRADE COMPLETED }
+
+enum ParityCheckStatus { NEVER_RUN RUNNING PAUSED COMPLETED CANCELLED FAILED }
+
+enum PluginInstallStatus { FAILED QUEUED RUNNING SUCCEEDED }
+
+enum RegistrationState { TRIAL BASIC PLUS PRO STARTER UNLEASHED LIFETIME EEXPIRED EGUID EGUID1 ETRIAL ENOKEYFILE ENOKEYFILE1 ENOKEYFILE2 ENOFLASH ENOFLASH1 ENOFLASH2 ENOFLASH3 ENOFLASH4 ENOFLASH5 ENOFLASH6 ENOFLASH7 EBLACKLISTED EBLACKLISTED1 EBLACKLISTED2 ENOCONN }
+
+enum Resource { ACTIVATION_CODE API_KEY ARRAY CLOUD CONFIG CONNECT CONNECT__REMOTE_ACCESS CUSTOMIZATIONS DASHBOARD DISK DISPLAY DOCKER FLASH INFO LOGS ME NETWORK NOTIFICATIONS ONLINE OS OWNER PERMISSION REGISTRATION SERVERS SERVICES SHARE VARS VMS WELCOME }
+
+enum Role { ADMIN CONNECT GUEST VIEWER }
+
+enum SensorType { CPU_PACKAGE CPU_CORE MOTHERBOARD CHIPSET GPU DISK NVME AMBIENT VRM CUSTOM }
+
+enum ServerStatus { ONLINE OFFLINE NEVER_CONNECTED }
+
+enum Temperature { CELSIUS FAHRENHEIT }
+
+enum TemperatureStatus { NORMAL WARNING CRITICAL UNKNOWN }
+
+enum TemperatureUnit { CELSIUS FAHRENHEIT KELVIN RANKINE }
+
+enum ThemeName { azure black gray white }
+
+enum UPSCableType { USB SIMPLE SMART ETHER CUSTOM }
+
+enum UPSKillPower { YES NO }
+
+enum UPSServiceState { ENABLE DISABLE }
+
+enum UPSType { USB APCSMART NET SNMP DUMB PCNET MODBUS }
+
+enum UpdateStatus { UP_TO_DATE UPDATE_AVAILABLE REBUILD_READY UNKNOWN }
+
+enum VmState { NOSTATE RUNNING IDLE PAUSED SHUTDOWN SHUTOFF CRASHED PMSUSPENDED }
+
+enum registrationType { BASIC PLUS PRO STARTER UNLEASHED LIFETIME INVALID TRIAL }
+
+input ActivationCodeOverrideInput {
+  code: String
+  partner: PartnerConfigInput
+  branding: BrandingConfigInput
+  system: SystemConfigInput
+}
+
+input AddPermissionInput {
+  resource: Resource!
+  actions: [AuthAction!]!
+}
+
+input AddRoleForApiKeyInput {
+  apiKeyId: PrefixedID!
+  role: Role!
+}
+
+input ArrayDiskInput {
+  id: PrefixedID!
+  slot: Int
+}
+
+input ArrayStateInput {
+  desiredState: ArrayStateInputState!
+  decryptionPassword: String
+  decryptionKeyfile: String
+}
+
+input BrandingConfigInput {
+  header: String
+  headermetacolor: String
+  background: String
+  showBannerGradient: Boolean
+  theme: String
+  bannerImage: String
+  caseModel: String
+  caseModelImage: String
+  partnerLogoLightUrl: String
+  partnerLogoDarkUrl: String
+  hasPartnerLogo: Boolean
+  onboardingTitle: String
+  onboardingSubtitle: String
+  onboardingTitleFreshInstall: String
+  onboardingSubtitleFreshInstall: String
+  onboardingTitleUpgrade: String
+  onboardingSubtitleUpgrade: String
+  onboardingTitleDowngrade: String
+  onboardingSubtitleDowngrade: String
+  onboardingTitleIncomplete: String
+  onboardingSubtitleIncomplete: String
+}
+
+input CreateApiKeyInput {
+  name: String!
+  description: String
+  roles: [Role!]
+  permissions: [AddPermissionInput!]
+  overwrite: Boolean
+}
+
+input CreateInternalBootPoolInput {
+  poolName: String!
+  devices: [String!]!
+  bootSizeMiB: Int!
+  updateBios: Boolean!
+  reboot: Boolean
+}
+
+input CreateRCloneRemoteInput {
+  name: String!
+  type: String!
+  parameters: JSON!
+}
+
+input DeleteApiKeyInput {
+  ids: [PrefixedID!]!
+}
+
+input DeleteRCloneRemoteInput {
+  name: String!
+}
+
+input DockerAutostartEntryInput {
+  id: PrefixedID!
+  autoStart: Boolean!
+  wait: Int
+}
+
+input InitiateFlashBackupInput {
+  remoteName: String!
+  sourcePath: String!
+  destinationPath: String!
+  options: JSON
+}
+
+input InstallPluginInput {
+  url: String!
+  name: String
+  forced: Boolean
+}
+
+input IpmiConfigInput {
+  enabled: Boolean
+  args: [String!]
+}
+
+input LmSensorsConfigInput {
+  enabled: Boolean
+  config_path: String
+}
+
+input NotificationData {
+  title: String!
+  subject: String!
+  description: String!
+  importance: NotificationImportance!
+  link: String
+}
+
+input NotificationFilter {
+  importance: NotificationImportance
+  type: NotificationType!
+  offset: Int!
+  limit: Int!
+}
+
+input OnboardingOverrideCompletionInput {
+  completed: Boolean
+  completedAtVersion: String
+  forceOpen: Boolean
+}
+
+input OnboardingOverrideInput {
+  onboarding: OnboardingOverrideCompletionInput
+  activationCode: ActivationCodeOverrideInput
+  partnerInfo: PartnerInfoOverrideInput
+  registrationState: RegistrationState
+}
+
+input PartnerConfigInput {
+  name: String
+  url: String
+  hardwareSpecsUrl: String
+  manualUrl: String
+  supportUrl: String
+  extraLinks: [PartnerLinkInput!]
+}
+
+input PartnerInfoOverrideInput {
+  partner: PartnerConfigInput
+  branding: BrandingConfigInput
+}
+
+input PartnerLinkInput {
+  title: String!
+  url: String!
+}
+
+input PluginManagementInput {
+  names: [String!]!
+  bundled: Boolean!
+  restart: Boolean!
+}
+
+input RCloneConfigFormInput {
+  providerType: String
+  showAdvanced: Boolean
+  parameters: JSON
+}
+
+input RemoveRoleFromApiKeyInput {
+  apiKeyId: PrefixedID!
+  role: Role!
+}
+
+input SensorConfigInput {
+  enabled: Boolean
+}
+
+input SystemConfigInput {
+  serverName: String
+  model: String
+  comment: String
+}
+
+input TemperatureConfigInput {
+  enabled: Boolean
+  polling_interval: Int
+  default_unit: TemperatureUnit
+  sensors: TemperatureSensorsConfigInput
+  thresholds: TemperatureThresholdsConfigInput
+  history: TemperatureHistoryConfigInput
+}
+
+input TemperatureHistoryConfigInput {
+  max_readings: Int
+  retention_ms: Int
+}
+
+input TemperatureSensorsConfigInput {
+  lm_sensors: LmSensorsConfigInput
+  smartctl: SensorConfigInput
+  ipmi: IpmiConfigInput
+}
+
+input TemperatureThresholdsConfigInput {
+  cpu_warning: Int
+  cpu_critical: Int
+  disk_warning: Int
+  disk_critical: Int
+  warning: Int
+  critical: Int
+}
+
+input UPSConfigInput {
+  service: UPSServiceState
+  upsCable: UPSCableType
+  customUpsCable: String
+  upsType: UPSType
+  device: String
+  overrideUpsCapacity: Int
+  batteryLevel: Int
+  minutes: Int
+  timeout: Int
+  killUps: UPSKillPower
+}
+
+input UpdateApiKeyInput {
+  id: PrefixedID!
+  name: String
+  description: String
+  roles: [Role!]
+  permissions: [AddPermissionInput!]
+}
+
+input UpdateSshInput {
+  enabled: Boolean!
+  port: Int!
+}
+
+input UpdateSystemTimeInput {
+  timeZone: String
+  useNtp: Boolean
+  ntpServers: [String!]
+  manualDateTime: String
+}
+
+interface FormSchema {
+  dataSchema: JSON!
+  uiSchema: JSON!
+  values: JSON!
+}
+
+interface Node {
+  id: PrefixedID!
+}
+
+type ActivationCode {
+  code: String
+  partner: PartnerConfig
+  branding: BrandingConfig
+  system: SystemConfig
+}
+
+type ApiConfig {
+  version: String!
+  extraOrigins: [String!]!
+  sandbox: Boolean
+  ssoSubIds: [String!]!
+  plugins: [String!]!
+}
+
+type ApiKey {
+  id: PrefixedID!
+  key: String!
+  name: String!
+  description: String
+  roles: [Role!]!
+  createdAt: String!
+  permissions: [Permission!]!
+}
+
+type ApiKeyFormSettings {
+  id: PrefixedID!
+  dataSchema: JSON!
+  uiSchema: JSON!
+  values: JSON!
+}
+
+type ApiKeyMutations {
+  create(input: CreateApiKeyInput!): ApiKey!
+  addRole(input: AddRoleForApiKeyInput!): Boolean!
+  removeRole(input: RemoveRoleFromApiKeyInput!): Boolean!
+  delete(input: DeleteApiKeyInput!): Boolean!
+  update(input: UpdateApiKeyInput!): ApiKey!
+}
+
+type ArrayCapacity {
+  kilobytes: Capacity!
+  disks: Capacity!
+}
+
+type ArrayDisk {
+  id: PrefixedID!
+  idx: Int!
+  name: String
+  device: String
+  size: BigInt
+  status: ArrayDiskStatus
+  rotational: Boolean
+  temp: Int
+  numReads: BigInt
+  numWrites: BigInt
+  numErrors: BigInt
+  fsSize: BigInt
+  fsFree: BigInt
+  fsUsed: BigInt
+  exportable: Boolean
+  type: ArrayDiskType!
+  warning: Int
+  critical: Int
+  fsType: String
+  comment: String
+  format: String
+  transport: String
+  color: ArrayDiskFsColor
+  isSpinning: Boolean
+}
+
+type ArrayMutations {
+  setState(input: ArrayStateInput!): UnraidArray!
+  addDiskToArray(input: ArrayDiskInput!): UnraidArray!
+  removeDiskFromArray(input: ArrayDiskInput!): UnraidArray!
+  mountArrayDisk(id: PrefixedID!): ArrayDisk!
+  unmountArrayDisk(id: PrefixedID!): ArrayDisk!
+  clearArrayDiskStatistics(id: PrefixedID!): Boolean!
+}
+
+type BrandingConfig {
+  header: String
+  headermetacolor: String
+  background: String
+  showBannerGradient: Boolean
+  theme: String
+  bannerImage: String
+  caseModel: String
+  caseModelImage: String
+  partnerLogoLightUrl: String
+  partnerLogoDarkUrl: String
+  hasPartnerLogo: Boolean
+  onboardingTitle: String
+  onboardingSubtitle: String
+  onboardingTitleFreshInstall: String
+  onboardingSubtitleFreshInstall: String
+  onboardingTitleUpgrade: String
+  onboardingSubtitleUpgrade: String
+  onboardingTitleDowngrade: String
+  onboardingSubtitleDowngrade: String
+  onboardingTitleIncomplete: String
+  onboardingSubtitleIncomplete: String
+}
+
+type Capacity {
+  free: String!
+  used: String!
+  total: String!
+}
+
+type Config {
+  id: PrefixedID!
+  valid: Boolean
+  error: String
+}
+
+type ContainerHostConfig {
+  networkMode: String!
+}
+
+type ContainerPort {
+  ip: String
+  privatePort: Port
+  publicPort: Port
+  type: ContainerPortType!
+}
+
+type CoreVersions {
+  unraid: String
+  api: String
+  kernel: String
+}
+
+type CpuLoad {
+  percentTotal: Float!
+  percentUser: Float!
+  percentSystem: Float!
+  percentNice: Float!
+  percentIdle: Float!
+  percentIrq: Float!
+  percentGuest: Float!
+  percentSteal: Float!
+}
+
+type CpuPackages {
+  id: PrefixedID!
+  totalPower: Float!
+  power: [Float!]!
+  temp: [Float!]!
+}
+
+type CpuUtilization {
+  id: PrefixedID!
+  percentTotal: Float!
+  cpus: [CpuLoad!]!
+}
+
+type Customization {
+  activationCode: ActivationCode
+  onboarding: Onboarding!
+  availableLanguages: [Language!]
+}
+
+type CustomizationMutations {
+  setTheme(theme: ThemeName!): Theme!
+  setLocale(locale: String!): String!
+}
+
+type Disk {
+  id: PrefixedID!
+  device: String!
+  type: String!
+  name: String!
+  vendor: String!
+  size: Float!
+  bytesPerSector: Float!
+  totalCylinders: Float!
+  totalHeads: Float!
+  totalSectors: Float!
+  totalTracks: Float!
+  tracksPerCylinder: Float!
+  sectorsPerTrack: Float!
+  firmwareRevision: String!
+  serialNum: String!
+  interfaceType: DiskInterfaceType!
+  smartStatus: DiskSmartStatus!
+  temperature: Float
+  partitions: [DiskPartition!]!
+  isSpinning: Boolean!
+}
+
+type DiskPartition {
+  name: String!
+  fsType: DiskFsType!
+  size: Float!
+}
+
+type Docker {
+  id: PrefixedID!
+  containers: [DockerContainer!]!
+  networks: [DockerNetwork!]!
+  portConflicts: DockerPortConflicts!
+  logs(id: PrefixedID!, since: DateTime, tail: Int): DockerContainerLogs!
+  container(id: PrefixedID!): DockerContainer
+  organizer: ResolvedOrganizerV1!
+  containerUpdateStatuses: [ExplicitStatusItem!]!
+}
+
+type DockerContainer {
+  id: PrefixedID!
+  names: [String!]!
+  image: String!
+  imageId: String!
+  command: String!
+  created: Int!
+  ports: [ContainerPort!]!
+  lanIpPorts: [String!]
+  sizeRootFs: BigInt
+  sizeRw: BigInt
+  sizeLog: BigInt
+  labels: JSON
+  state: ContainerState!
+  status: String!
+  hostConfig: ContainerHostConfig
+  networkSettings: JSON
+  mounts: [JSON!]
+  autoStart: Boolean!
+  autoStartOrder: Int
+  autoStartWait: Int
+  templatePath: String
+  projectUrl: String
+  registryUrl: String
+  supportUrl: String
+  iconUrl: String
+  webUiUrl: String
+  shell: String
+  templatePorts: [ContainerPort!]
+  isOrphaned: Boolean!
+  isUpdateAvailable: Boolean
+  isRebuildReady: Boolean
+  tailscaleEnabled: Boolean!
+  tailscaleStatus(forceRefresh: Boolean): TailscaleStatus
+}
+
+type DockerContainerLogLine {
+  timestamp: DateTime!
+  message: String!
+}
+
+type DockerContainerLogs {
+  containerId: PrefixedID!
+  lines: [DockerContainerLogLine!]!
+  cursor: DateTime
+}
+
+type DockerContainerPortConflict {
+  privatePort: Port!
+  type: ContainerPortType!
+  containers: [DockerPortConflictContainer!]!
+}
+
+type DockerContainerStats {
+  id: PrefixedID!
+  cpuPercent: Float!
+  memUsage: String!
+  memPercent: Float!
+  netIO: String!
+  blockIO: String!
+}
+
+type DockerLanPortConflict {
+  lanIpPort: String!
+  publicPort: Port
+  type: ContainerPortType!
+  containers: [DockerPortConflictContainer!]!
+}
+
+type DockerMutations {
+  start(id: PrefixedID!): DockerContainer!
+  stop(id: PrefixedID!): DockerContainer!
+  pause(id: PrefixedID!): DockerContainer!
+  unpause(id: PrefixedID!): DockerContainer!
+  removeContainer(id: PrefixedID!, withImage: Boolean): Boolean!
+  updateAutostartConfiguration(entries: [DockerAutostartEntryInput!]!, persistUserPreferences: Boolean): Boolean!
+  updateContainer(id: PrefixedID!): DockerContainer!
+  updateContainers(ids: [PrefixedID!]!): [DockerContainer!]!
+  updateAllContainers: [DockerContainer!]!
+}
+
+type DockerNetwork {
+  id: PrefixedID!
+  name: String!
+  created: String!
+  scope: String!
+  driver: String!
+  enableIPv6: Boolean!
+  ipam: JSON!
+  internal: Boolean!
+  attachable: Boolean!
+  ingress: Boolean!
+  configFrom: JSON!
+  configOnly: Boolean!
+  containers: JSON!
+  options: JSON!
+  labels: JSON!
+}
+
+type DockerPortConflictContainer {
+  id: PrefixedID!
+  name: String!
+}
+
+type DockerPortConflicts {
+  containerPorts: [DockerContainerPortConflict!]!
+  lanPorts: [DockerLanPortConflict!]!
+}
+
+type DockerTemplateSyncResult {
+  scanned: Int!
+  matched: Int!
+  skipped: Int!
+  errors: [String!]!
+}
+
+type ExplicitStatusItem {
+  name: String!
+  updateStatus: UpdateStatus!
+}
+
+type Flash {
+  id: PrefixedID!
+  guid: String!
+  vendor: String!
+  product: String!
+}
+
+type FlashBackupStatus {
+  status: String!
+  jobId: String
+}
+
+type FlatOrganizerEntry {
+  id: String!
+  type: String!
+  name: String!
+  parentId: String
+  depth: Float!
+  position: Float!
+  path: [String!]!
+  hasChildren: Boolean!
+  childrenIds: [String!]!
+  meta: DockerContainer
+}
+
+type Info {
+  id: PrefixedID!
+  time: DateTime!
+  baseboard: InfoBaseboard!
+  cpu: InfoCpu!
+  devices: InfoDevices!
+  display: InfoDisplay!
+  machineId: ID
+  memory: InfoMemory!
+  os: InfoOs!
+  system: InfoSystem!
+  versions: InfoVersions!
+  networkInterfaces: [InfoNetworkInterface!]!
+  primaryNetwork: InfoNetworkInterface
+}
+
+type InfoBaseboard {
+  id: PrefixedID!
+  manufacturer: String
+  model: String
+  version: String
+  serial: String
+  assetTag: String
+  memMax: Float
+  memSlots: Float
+}
+
+type InfoCpu {
+  id: PrefixedID!
+  manufacturer: String
+  brand: String
+  vendor: String
+  family: String
+  model: String
+  stepping: Int
+  revision: String
+  voltage: String
+  speed: Float
+  speedmin: Float
+  speedmax: Float
+  threads: Int
+  cores: Int
+  processors: Int
+  socket: String
+  cache: JSON
+  flags: [String!]
+  topology: [[?]!]!
+  packages: CpuPackages!
+}
+
+type InfoDevices {
+  id: PrefixedID!
+  gpu: [InfoGpu!]
+  network: [InfoNetwork!]
+  pci: [InfoPci!]
+  usb: [InfoUsb!]
+}
+
+type InfoDisplay {
+  id: PrefixedID!
+  case: InfoDisplayCase!
+  theme: ThemeName!
+  unit: Temperature!
+  scale: Boolean!
+  tabs: Boolean!
+  resize: Boolean!
+  wwn: Boolean!
+  total: Boolean!
+  usage: Boolean!
+  text: Boolean!
+  warning: Int!
+  critical: Int!
+  hot: Int!
+  max: Int
+  locale: String
+}
+
+type InfoDisplayCase {
+  id: PrefixedID!
+  url: String!
+  icon: String!
+  error: String!
+  base64: String!
+}
+
+type InfoGpu {
+  id: PrefixedID!
+  type: String!
+  typeid: String!
+  blacklisted: Boolean!
+  class: String!
+  productid: String!
+  vendorname: String
+}
+
+type InfoMemory {
+  id: PrefixedID!
+  layout: [MemoryLayout!]!
+}
+
+type InfoNetwork {
+  id: PrefixedID!
+  iface: String!
+  model: String
+  vendor: String
+  mac: String
+  virtual: Boolean
+  speed: String
+  dhcp: Boolean
+}
+
+type InfoNetworkInterface {
+  id: PrefixedID!
+  name: String!
+  description: String
+  macAddress: String
+  mtu: Int
+  speed: Int
+  duplex: String
+  internal: Boolean
+  virtual: Boolean
+  operstate: String
+  type: String
+  vlanId: Int
+  ipv4Addresses: [InfoNetworkIpv4Address!]!
+  ipv6Addresses: [InfoNetworkIpv6Address!]!
+  status: String
+  protocol: String
+  ipAddress: String
+  netmask: String
+  gateway: String
+  useDhcp: Boolean
+  ipv6Address: String
+  ipv6Netmask: String
+  ipv6Gateway: String
+  useDhcp6: Boolean
+}
+
+type InfoNetworkIpv4Address {
+  address: String!
+  netmask: String!
+}
+
+type InfoNetworkIpv6Address {
+  address: String!
+  prefixLength: Int
+}
+
+type InfoOs {
+  id: PrefixedID!
+  platform: String
+  distro: String
+  release: String
+  codename: String
+  kernel: String
+  arch: String
+  hostname: String
+  fqdn: String
+  build: String
+  servicepack: String
+  uptime: String
+  logofile: String
+  serial: String
+  uefi: Boolean
+}
+
+type InfoPci {
+  id: PrefixedID!
+  type: String!
+  typeid: String!
+  vendorname: String
+  vendorid: String!
+  productname: String
+  productid: String!
+  blacklisted: String!
+  class: String!
+}
+
+type InfoSystem {
+  id: PrefixedID!
+  manufacturer: String
+  model: String
+  version: String
+  serial: String
+  uuid: String
+  sku: String
+  virtual: Boolean
+}
+
+type InfoUsb {
+  id: PrefixedID!
+  name: String!
+  bus: String
+  device: String
+}
+
+type InfoVersions {
+  id: PrefixedID!
+  core: CoreVersions!
+  packages: PackageVersions
+}
+
+type IpmiConfig {
+  enabled: Boolean
+  args: [String!]
+}
+
+type KeyFile {
+  location: String
+  contents: String
+}
+
+type Language {
+  code: String!
+  name: String!
+  url: String
+}
+
+type LmSensorsConfig {
+  enabled: Boolean
+  config_path: String
+}
+
+type LogFile {
+  name: String!
+  path: String!
+  size: Int!
+  modifiedAt: DateTime!
+}
+
+type LogFileContent {
+  path: String!
+  content: String!
+  totalLines: Int!
+  startLine: Int
+}
+
+type MemoryLayout {
+  id: PrefixedID!
+  size: BigInt!
+  bank: String
+  type: String
+  clockSpeed: Int
+  partNum: String
+  serialNum: String
+  manufacturer: String
+  formFactor: String
+  voltageConfigured: Int
+  voltageMin: Int
+  voltageMax: Int
+}
+
+type MemoryUtilization {
+  id: PrefixedID!
+  total: BigInt!
+  used: BigInt!
+  free: BigInt!
+  available: BigInt!
+  active: BigInt!
+  buffcache: BigInt!
+  percentTotal: Float!
+  swapTotal: BigInt!
+  swapUsed: BigInt!
+  swapFree: BigInt!
+  percentSwapTotal: Float!
+}
+
+type Metrics {
+  id: PrefixedID!
+  cpu: CpuUtilization
+  memory: MemoryUtilization
+  temperature: TemperatureMetrics
+  network: [NetworkMetrics!]!
+}
+
+type Mutation {
+  createNotification(input: NotificationData!): Notification!
+  deleteNotification(id: PrefixedID!, type: NotificationType!): NotificationOverview!
+  deleteArchivedNotifications: NotificationOverview!
+  archiveNotification(id: PrefixedID!): Notification!
+  archiveNotifications(ids: [PrefixedID!]!): NotificationOverview!
+  notifyIfUnique(input: NotificationData!): Notification
+  archiveAll(importance: NotificationImportance): NotificationOverview!
+  unreadNotification(id: PrefixedID!): Notification!
+  unarchiveNotifications(ids: [PrefixedID!]!): NotificationOverview!
+  unarchiveAll(importance: NotificationImportance): NotificationOverview!
+  recalculateOverview: NotificationOverview!
+  array: ArrayMutations!
+  docker: DockerMutations!
+  vm: VmMutations!
+  parityCheck: ParityCheckMutations!
+  apiKey: ApiKeyMutations!
+  customization: CustomizationMutations!
+  rclone: RCloneMutations!
+  onboarding: OnboardingMutations!
+  unraidPlugins: UnraidPluginsMutations!
+  updateServerIdentity(name: String!, comment: String, sysModel: String): Server!
+  updateSshSettings(input: UpdateSshInput!): Vars!
+  createDockerFolder(name: String!, parentId: String, childrenIds: [String!]): ResolvedOrganizerV1!
+  setDockerFolderChildren(folderId: String, childrenIds: [String!]!): ResolvedOrganizerV1!
+  deleteDockerEntries(entryIds: [String!]!): ResolvedOrganizerV1!
+  moveDockerEntriesToFolder(sourceEntryIds: [String!]!, destinationFolderId: String!): ResolvedOrganizerV1!
+  moveDockerItemsToPosition(sourceEntryIds: [String!]!, destinationFolderId: String!, position: Float!): ResolvedOrganizerV1!
+  renameDockerFolder(folderId: String!, newName: String!): ResolvedOrganizerV1!
+  createDockerFolderWithItems(name: String!, parentId: String, sourceEntryIds: [String!], position: Float): ResolvedOrganizerV1!
+  updateDockerViewPreferences(viewId: String, prefs: JSON!): ResolvedOrganizerV1!
+  syncDockerTemplatePaths: DockerTemplateSyncResult!
+  resetDockerTemplateMappings: Boolean!
+  refreshDockerDigests: Boolean!
+  initiateFlashBackup(input: InitiateFlashBackupInput!): FlashBackupStatus!
+  updateSettings(input: JSON!): UpdateSettingsResponse!
+  updateTemperatureConfig(input: TemperatureConfigInput!): Boolean!
+  updateSystemTime(input: UpdateSystemTimeInput!): SystemTime!
+  configureUps(config: UPSConfigInput!): Boolean!
+  addPlugin(input: PluginManagementInput!): Boolean!
+  removePlugin(input: PluginManagementInput!): Boolean!
+}
+
+type NetworkMetrics {
+  id: PrefixedID!
+  name: String!
+  operstate: String
+  bytesReceived: BigInt!
+  bytesSent: BigInt!
+  packetsReceived: BigInt!
+  packetsSent: BigInt!
+  receiveErrors: BigInt!
+  transmitErrors: BigInt!
+  receiveDropped: BigInt!
+  transmitDropped: BigInt!
+  rxSec: Float!
+  txSec: Float!
+  utilizationPercent: Float
+  lastUpdated: DateTime!
+}
+
+type Notification {
+  id: PrefixedID!
+  title: String!
+  subject: String!
+  description: String!
+  importance: NotificationImportance!
+  link: String
+  type: NotificationType!
+  timestamp: String
+  formattedTimestamp: String
+}
+
+type NotificationCounts {
+  info: Int!
+  warning: Int!
+  alert: Int!
+  total: Int!
+}
+
+type NotificationOverview {
+  unread: NotificationCounts!
+  archive: NotificationCounts!
+}
+
+type Notifications {
+  id: PrefixedID!
+  overview: NotificationOverview!
+  list(filter: NotificationFilter!): [Notification!]!
+  warningsAndAlerts: [Notification!]!
+}
+
+type OidcAuthorizationRule {
+  claim: String!
+  operator: AuthorizationOperator!
+  value: [String!]!
+}
+
+type OidcConfiguration {
+  providers: [OidcProvider!]!
+  defaultAllowedOrigins: [String!]
+}
+
+type OidcProvider {
+  id: PrefixedID!
+  name: String!
+  clientId: String!
+  clientSecret: String
+  issuer: String
+  authorizationEndpoint: String
+  tokenEndpoint: String
+  jwksUri: String
+  scopes: [String!]!
+  authorizationRules: [OidcAuthorizationRule!]
+  authorizationRuleMode: AuthorizationRuleMode
+  buttonText: String
+  buttonIcon: String
+  buttonVariant: String
+  buttonStyle: String
+}
+
+type OidcSessionValidation {
+  valid: Boolean!
+  username: String
+}
+
+type Onboarding {
+  status: OnboardingStatus!
+  isPartnerBuild: Boolean!
+  completed: Boolean!
+  completedAtVersion: String
+  activationCode: String
+  shouldOpen: Boolean!
+  onboardingState: OnboardingState!
+}
+
+type OnboardingInternalBootContext {
+  arrayStopped: Boolean!
+  bootEligible: Boolean
+  bootedFromFlashWithInternalBootSetup: Boolean!
+  enableBootTransfer: String
+  reservedNames: [String!]!
+  shareNames: [String!]!
+  poolNames: [String!]!
+  assignableDisks: [Disk!]!
+  driveWarnings: [OnboardingInternalBootDriveWarning!]!
+}
+
+type OnboardingInternalBootDriveWarning {
+  diskId: String!
+  device: String!
+  warnings: [String!]!
+}
+
+type OnboardingInternalBootResult {
+  ok: Boolean!
+  code: Int
+  output: String!
+}
+
+type OnboardingMutations {
+  completeOnboarding: Onboarding!
+  resetOnboarding: Onboarding!
+  openOnboarding: Onboarding!
+  closeOnboarding: Onboarding!
+  bypassOnboarding: Onboarding!
+  resumeOnboarding: Onboarding!
+  setOnboardingOverride(input: OnboardingOverrideInput!): Onboarding!
+  clearOnboardingOverride: Onboarding!
+  createInternalBootPool(input: CreateInternalBootPoolInput!): OnboardingInternalBootResult!
+  refreshInternalBootContext: OnboardingInternalBootContext!
+}
+
+type OnboardingState {
+  registrationState: RegistrationState
+  isRegistered: Boolean!
+  isFreshInstall: Boolean!
+  hasActivationCode: Boolean!
+  activationRequired: Boolean!
+}
+
+type Owner {
+  username: String!
+  url: String!
+  avatar: String!
+}
+
+type PackageVersions {
+  openssl: String
+  node: String
+  npm: String
+  pm2: String
+  git: String
+  nginx: String
+  php: String
+  docker: String
+}
+
+type ParityCheck {
+  date: DateTime
+  duration: Int
+  speed: String
+  status: ParityCheckStatus!
+  errors: Int
+  progress: Int
+  correcting: Boolean
+  paused: Boolean
+  running: Boolean
+}
+
+type ParityCheckMutations {
+  start(correct: Boolean!): JSON!
+  pause: JSON!
+  resume: JSON!
+  cancel: JSON!
+}
+
+type PartnerConfig {
+  name: String
+  url: String
+  hardwareSpecsUrl: String
+  manualUrl: String
+  supportUrl: String
+  extraLinks: [PartnerLink!]
+}
+
+type PartnerLink {
+  title: String!
+  url: String!
+}
+
+type Permission {
+  resource: Resource!
+  actions: [AuthAction!]!
+}
+
+type Plugin {
+  name: String!
+  version: String!
+  hasApiModule: Boolean
+  hasCliModule: Boolean
+}
+
+type PluginInstallEvent {
+  operationId: ID!
+  status: PluginInstallStatus!
+  output: [String!]
+  timestamp: DateTime!
+}
+
+type PluginInstallOperation {
+  id: ID!
+  url: String!
+  name: String
+  status: PluginInstallStatus!
+  createdAt: DateTime!
+  updatedAt: DateTime
+  finishedAt: DateTime
+  output: [String!]!
+}
+
+type ProfileModel {
+  id: PrefixedID!
+  username: String!
+  url: String!
+  avatar: String!
+}
+
+type PublicOidcProvider {
+  id: ID!
+  name: String!
+  buttonText: String
+  buttonIcon: String
+  buttonVariant: String
+  buttonStyle: String
+}
+
+type Query {
+  apiKeys: [ApiKey!]!
+  apiKey(id: PrefixedID!): ApiKey
+  apiKeyPossibleRoles: [Role!]!
+  apiKeyPossiblePermissions: [Permission!]!
+  getPermissionsForRoles(roles: [Role!]!): [Permission!]!
+  previewEffectivePermissions(roles: [Role!], permissions: [AddPermissionInput!]): [Permission!]!
+  getAvailableAuthActions: [AuthAction!]!
+  getApiKeyCreationFormSchema: ApiKeyFormSettings!
+  config: Config!
+  display: InfoDisplay!
+  flash: Flash!
+  me: UserAccount!
+  notifications: Notifications!
+  online: Boolean!
+  owner: Owner!
+  internalBootContext: OnboardingInternalBootContext!
+  registration: Registration
+  server: Server
+  servers: [Server!]!
+  services: [Service!]!
+  shares: [Share!]!
+  vars: Vars!
+  vms: Vms!
+  parityHistory: [ParityCheck!]!
+  array: UnraidArray!
+  customization: Customization
+  isFreshInstall: Boolean!
+  publicTheme: Theme!
+  info: Info!
+  networkInterfaces: [InfoNetworkInterface!]!
+  docker: Docker!
+  disks: [Disk!]!
+  assignableDisks: [Disk!]!
+  disk(id: PrefixedID!): Disk!
+  rclone: RCloneBackupSettings!
+  logFiles: [LogFile!]!
+  logFile(path: String!, lines: Int, startLine: Int): LogFileContent!
+  settings: Settings!
+  isSSOEnabled: Boolean!
+  publicOidcProviders: [PublicOidcProvider!]!
+  oidcProviders: [OidcProvider!]!
+  oidcProvider(id: PrefixedID!): OidcProvider
+  oidcConfiguration: OidcConfiguration!
+  validateOidcSession(token: String!): OidcSessionValidation!
+  metrics: Metrics!
+  systemTime: SystemTime!
+  timeZoneOptions: [TimeZoneOption!]!
+  upsDevices: [UPSDevice!]!
+  upsDeviceById(id: String!): UPSDevice
+  upsConfiguration: UPSConfiguration!
+  pluginInstallOperation(operationId: ID!): PluginInstallOperation
+  pluginInstallOperations: [PluginInstallOperation!]!
+  installedUnraidPlugins: [String!]!
+  plugins: [Plugin!]!
+}
+
+type RCloneBackupConfigForm {
+  id: ID!
+  dataSchema: JSON!
+  uiSchema: JSON!
+}
+
+type RCloneBackupSettings {
+  configForm(formOptions: RCloneConfigFormInput): RCloneBackupConfigForm!
+  drives: [RCloneDrive!]!
+  remotes: [RCloneRemote!]!
+}
+
+type RCloneDrive {
+  name: String!
+  options: JSON!
+}
+
+type RCloneMutations {
+  createRCloneRemote(input: CreateRCloneRemoteInput!): RCloneRemote!
+  deleteRCloneRemote(input: DeleteRCloneRemoteInput!): Boolean!
+}
+
+type RCloneRemote {
+  name: String!
+  type: String!
+  parameters: JSON!
+  config: JSON!
+}
+
+type Registration {
+  id: PrefixedID!
+  type: registrationType
+  keyFile: KeyFile
+  state: RegistrationState
+  expiration: String
+  updateExpiration: String
+}
+
+type ResolvedOrganizerV1 {
+  version: Float!
+  views: [ResolvedOrganizerView!]!
+}
+
+type ResolvedOrganizerView {
+  id: String!
+  name: String!
+  rootId: String!
+  flatEntries: [FlatOrganizerEntry!]!
+  prefs: JSON
+}
+
+type SensorConfig {
+  enabled: Boolean
+}
+
+type Server {
+  id: PrefixedID!
+  owner: ProfileModel!
+  guid: String!
+  apikey: String!
+  name: String!
+  comment: String
+  status: ServerStatus!
+  wanip: String!
+  lanip: String!
+  localurl: String!
+  remoteurl: String!
+}
+
+type Service {
+  id: PrefixedID!
+  name: String
+  online: Boolean
+  uptime: Uptime
+  version: String
+}
+
+type Settings {
+  id: PrefixedID!
+  unified: UnifiedSettings!
+  sso: SsoSettings!
+  api: ApiConfig!
+}
+
+type Share {
+  id: PrefixedID!
+  name: String
+  free: BigInt
+  used: BigInt
+  size: BigInt
+  include: [String!]
+  exclude: [String!]
+  cache: Boolean
+  nameOrig: String
+  comment: String
+  allocator: String
+  splitLevel: String
+  floor: String
+  cow: String
+  color: String
+  luksStatus: String
+}
+
+type SsoSettings {
+  id: PrefixedID!
+  oidcProviders: [OidcProvider!]!
+}
+
+type Subscription {
+  displaySubscription: InfoDisplay!
+  notificationAdded: Notification!
+  notificationsOverview: NotificationOverview!
+  notificationsWarningsAndAlerts: [Notification!]!
+  ownerSubscription: Owner!
+  serversSubscription: Server!
+  parityHistorySubscription: ParityCheck!
+  arraySubscription: UnraidArray!
+  dockerContainerStats: DockerContainerStats!
+  logFile(path: String!): LogFileContent!
+  systemMetricsCpu: CpuUtilization!
+  systemMetricsCpuTelemetry: CpuPackages!
+  systemMetricsMemory: MemoryUtilization!
+  systemMetricsNetwork: [NetworkMetrics!]!
+  systemMetricsTemperature: TemperatureMetrics
+  upsUpdates: UPSDevice!
+  pluginInstallUpdates(operationId: ID!): PluginInstallEvent!
+}
+
+type SystemConfig {
+  serverName: String
+  model: String
+  comment: String
+}
+
+type SystemTime {
+  currentTime: String!
+  timeZone: String!
+  useNtp: Boolean!
+  ntpServers: [String!]!
+}
+
+type TailscaleExitNodeStatus {
+  online: Boolean!
+  tailscaleIps: [String!]
+}
+
+type TailscaleStatus {
+  online: Boolean!
+  version: String
+  latestVersion: String
+  updateAvailable: Boolean!
+  hostname: String
+  dnsName: String
+  relay: String
+  relayName: String
+  tailscaleIps: [String!]
+  primaryRoutes: [String!]
+  isExitNode: Boolean!
+  exitNodeStatus: TailscaleExitNodeStatus
+  webUiUrl: String
+  keyExpiry: DateTime
+  keyExpiryDays: Int
+  keyExpired: Boolean!
+  backendState: String
+  authUrl: String
+}
+
+type TemperatureHistoryConfig {
+  max_readings: Int
+  retention_ms: Int
+}
+
+type TemperatureMetrics {
+  id: PrefixedID!
+  sensors: [TemperatureSensor!]!
+  summary: TemperatureSummary!
+}
+
+type TemperatureReading {
+  value: Float!
+  unit: TemperatureUnit!
+  timestamp: DateTime!
+  status: TemperatureStatus!
+}
+
+type TemperatureSensor {
+  id: PrefixedID!
+  name: String!
+  type: SensorType!
+  location: String
+  current: TemperatureReading!
+  min: TemperatureReading
+  max: TemperatureReading
+  warning: Float
+  critical: Float
+  history: [TemperatureReading!]
+}
+
+type TemperatureSensorsConfig {
+  lm_sensors: LmSensorsConfig
+  smartctl: SensorConfig
+  ipmi: IpmiConfig
+}
+
+type TemperatureSummary {
+  average: Float!
+  hottest: TemperatureSensor!
+  coolest: TemperatureSensor!
+  warningCount: Int!
+  criticalCount: Int!
+}
+
+type TemperatureThresholdsConfig {
+  cpu_warning: Int
+  cpu_critical: Int
+  disk_warning: Int
+  disk_critical: Int
+  warning: Int
+  critical: Int
+}
+
+type Theme {
+  name: ThemeName!
+  showBannerImage: Boolean!
+  showBannerGradient: Boolean!
+  showHeaderDescription: Boolean!
+  headerBackgroundColor: String
+  headerPrimaryTextColor: String
+  headerSecondaryTextColor: String
+}
+
+type TimeZoneOption {
+  value: String!
+  label: String!
+}
+
+type UPSBattery {
+  chargeLevel: Int!
+  estimatedRuntime: Int!
+  health: String!
+}
+
+type UPSConfiguration {
+  service: String
+  upsCable: String
+  customUpsCable: String
+  upsType: String
+  device: String
+  overrideUpsCapacity: Int
+  batteryLevel: Int
+  minutes: Int
+  timeout: Int
+  killUps: String
+  nisIp: String
+  netServer: String
+  upsName: String
+  modelName: String
+}
+
+type UPSDevice {
+  id: ID!
+  name: String!
+  model: String!
+  status: String!
+  battery: UPSBattery!
+  power: UPSPower!
+}
+
+type UPSPower {
+  inputVoltage: Float!
+  outputVoltage: Float!
+  loadPercentage: Int!
+  nominalPower: Int
+  currentPower: Float
+}
+
+type UnifiedSettings {
+  id: PrefixedID!
+  dataSchema: JSON!
+  uiSchema: JSON!
+  values: JSON!
+}
+
+type UnraidArray {
+  id: PrefixedID!
+  state: ArrayState!
+  capacity: ArrayCapacity!
+  boot: ArrayDisk
+  bootDevices: [ArrayDisk!]!
+  parities: [ArrayDisk!]!
+  parityCheckStatus: ParityCheck!
+  disks: [ArrayDisk!]!
+  caches: [ArrayDisk!]!
+}
+
+type UnraidPluginsMutations {
+  installPlugin(input: InstallPluginInput!): PluginInstallOperation!
+  installLanguage(input: InstallPluginInput!): PluginInstallOperation!
+}
+
+type UpdateSettingsResponse {
+  restartRequired: Boolean!
+  values: JSON!
+  warnings: [String!]
+}
+
+type Uptime {
+  timestamp: String
+}
+
+type UserAccount {
+  id: PrefixedID!
+  name: String!
+  description: String!
+  roles: [Role!]!
+  permissions: [Permission!]
+}
+
+type Vars {
+  id: PrefixedID!
+  version: String
+  maxArraysz: Int
+  maxCachesz: Int
+  name: String
+  timeZone: String
+  comment: String
+  security: String
+  workgroup: String
+  domain: String
+  domainShort: String
+  hideDotFiles: Boolean
+  localMaster: Boolean
+  enableFruit: String
+  useNtp: Boolean
+  ntpServer1: String
+  ntpServer2: String
+  ntpServer3: String
+  ntpServer4: String
+  domainLogin: String
+  sysModel: String
+  sysArraySlots: Int
+  sysCacheSlots: Int
+  sysFlashSlots: Int
+  useSsl: Boolean
+  port: Int
+  portssl: Int
+  localTld: String
+  bindMgt: Boolean
+  useTelnet: Boolean
+  porttelnet: Int
+  useSsh: Boolean
+  portssh: Int
+  startPage: String
+  startArray: Boolean
+  spindownDelay: String
+  queueDepth: String
+  spinupGroups: Boolean
+  defaultFormat: String
+  defaultFsType: String
+  shutdownTimeout: Int
+  luksKeyfile: String
+  pollAttributes: String
+  pollAttributesDefault: String
+  pollAttributesStatus: String
+  nrRequests: Int
+  nrRequestsDefault: Int
+  nrRequestsStatus: String
+  mdNumStripes: Int
+  mdNumStripesDefault: Int
+  mdNumStripesStatus: String
+  mdSyncWindow: Int
+  mdSyncWindowDefault: Int
+  mdSyncWindowStatus: String
+  mdSyncThresh: Int
+  mdSyncThreshDefault: Int
+  mdSyncThreshStatus: String
+  mdWriteMethod: Int
+  mdWriteMethodDefault: String
+  mdWriteMethodStatus: String
+  shareDisk: String
+  shareUser: String
+  shareUserInclude: String
+  shareUserExclude: String
+  shareSmbEnabled: Boolean
+  shareNfsEnabled: Boolean
+  shareAfpEnabled: Boolean
+  shareInitialOwner: String
+  shareInitialGroup: String
+  shareCacheEnabled: Boolean
+  shareCacheFloor: String
+  shareMoverSchedule: String
+  shareMoverLogging: Boolean
+  fuseRemember: String
+  fuseRememberDefault: String
+  fuseRememberStatus: String
+  fuseDirectio: String
+  fuseDirectioDefault: String
+  fuseDirectioStatus: String
+  shareAvahiEnabled: Boolean
+  shareAvahiSmbName: String
+  shareAvahiSmbModel: String
+  shareAvahiAfpName: String
+  shareAvahiAfpModel: String
+  safeMode: Boolean
+  startMode: String
+  configValid: Boolean
+  configError: ConfigErrorState
+  joinStatus: String
+  deviceCount: Int
+  flashGuid: String
+  flashProduct: String
+  flashVendor: String
+  tpmGuid: String
+  regCheck: String
+  regFile: String
+  regGuid: String
+  regTy: registrationType
+  regState: RegistrationState
+  regTo: String
+  regTm: String
+  regTm2: String
+  regGen: String
+  sbName: String
+  sbVersion: String
+  sbUpdated: String
+  sbEvents: Int
+  sbState: String
+  sbClean: Boolean
+  sbSynced: Int
+  sbSyncErrs: Int
+  sbSynced2: Int
+  sbSyncExit: String
+  sbNumDisks: Int
+  mdColor: String
+  mdNumDisks: Int
+  mdNumDisabled: Int
+  mdNumInvalid: Int
+  mdNumMissing: Int
+  mdNumNew: Int
+  mdNumErased: Int
+  mdResync: Int
+  mdResyncCorr: String
+  mdResyncPos: String
+  mdResyncDb: String
+  mdResyncDt: String
+  mdResyncAction: String
+  mdResyncSize: Int
+  mdState: String
+  mdVersion: String
+  cacheNumDevices: Int
+  cacheSbNumDisks: Int
+  fsState: String
+  bootEligible: Boolean
+  enableBootTransfer: String
+  bootedFromFlashWithInternalBootSetup: Boolean
+  reservedNames: String
+  fsProgress: String
+  fsCopyPrcnt: Int
+  fsNumMounted: Int
+  fsNumUnmountable: Int
+  fsUnmountableMask: String
+  shareCount: Int
+  shareSmbCount: Int
+  shareNfsCount: Int
+  shareAfpCount: Int
+  shareMoverActive: Boolean
+  csrfToken: String
+}
+
+type VmDomain {
+  id: PrefixedID!
+  name: String
+  state: VmState!
+  uuid: String
+}
+
+type VmMutations {
+  start(id: PrefixedID!): Boolean!
+  stop(id: PrefixedID!): Boolean!
+  pause(id: PrefixedID!): Boolean!
+  resume(id: PrefixedID!): Boolean!
+  forceStop(id: PrefixedID!): Boolean!
+  reboot(id: PrefixedID!): Boolean!
+  reset(id: PrefixedID!): Boolean!
+}
+
+type Vms {
+  id: PrefixedID!
+  domains: [VmDomain!]
+  domain: [VmDomain!]
+}
+
+scalar BigInt
+
+scalar Boolean
+
+scalar DateTime
+
+scalar Float
+
+scalar ID
+
+scalar Int
+
+scalar JSON
+
+scalar Port
+
+scalar PrefixedID
+
+scalar String
