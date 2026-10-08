@@ -71,6 +71,27 @@ authentication"):
   WARNING with the peer IP and sanitised header values; the `Authorization`
   header is never logged.
 
+## Deployment
+
+- The monolith container runs on the host network, bound to one specific
+  address (`10.10.10.50:8078`), never `0.0.0.0`. The image sets no bind
+  default: without `MCP_HOST`/`MCP_PORT` it falls back to `127.0.0.1:8000`.
+- The image runs as non-root uid/gid 10078 with a read-only root filesystem,
+  `--cap-drop ALL` and `no-new-privileges`. `/config` is mounted read-only;
+  the secret files are mode 600 in a mode 700 directory, all owned by 10078.
+- Host networking shares monolith's network namespace, including services
+  listening on the host loopback. The hardening above limits what a
+  compromised process can do with that.
+- Network layer: a pfSense floating rule rejects every source except
+  `192.168.0.240` to `10.10.10.50:8078`. Same-VLAN peers and monolith itself
+  never cross pfSense; the app's `MCP_ALLOWED_CLIENTS` refuses them with 403.
+- The bearer token travels in cleartext HTTP on the LAN (vclaude02
+  `192.168.0.240` → pfSense → `10.10.10.50:8078`); anyone who can sniff or
+  intercept that path can read and replay it. This is an accepted risk for
+  this homelab deployment (read-only by default, network-layer reject plus
+  the source allowlist). Terminate TLS in front of the container before
+  exposing it more widely.
+
 ## Read-only by default
 
 - `UNRAID_ALLOW_WRITES` defaults to `0` (off). Write actions are refused at the

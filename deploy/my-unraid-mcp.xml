@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>unraid-mcp</Name>
+  <Repository>unraid-mcp:latest</Repository>
+  <Network>host</Network>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Overview>MCP server for the Unraid GraphQL API (FastMCP 4.x, HTTP transport). Host network, bound only to 10.10.10.50:8078. Upstream is the host-local API at http://127.0.0.1/graphql, because macvlan host isolation hung every upstream read (#360).</Overview>
+  <Category>Tools:</Category>
+  <ExtraParams>--restart unless-stopped --read-only --cap-drop ALL --security-opt no-new-privileges --user 10078:10078</ExtraParams>
+  <Description>Exposes the Unraid GraphQL API as an MCP tool over streamable HTTP at http://10.10.10.50:8078/mcp (host network, non-root uid 10078, read-only root) - #360.</Description>
+  <Config Name="UNRAID_API_URL" Target="UNRAID_API_URL" Default="http://127.0.0.1/graphql" Mode="" Description="host-local Unraid API (host network) - #360" Type="Variable" Display="always" Required="true" Mask="false">http://127.0.0.1/graphql</Config>
+  <Config Name="UNRAID_ALLOW_WRITES" Target="UNRAID_ALLOW_WRITES" Default="0" Mode="" Description="Enable write operations (0=disabled, 1=enabled)" Type="Variable" Display="always" Required="false" Mask="false">0</Config>
+  <Config Name="UNRAID_TRANSPORT" Target="UNRAID_TRANSPORT" Default="http" Mode="" Description="MCP transport (http or stdio)" Type="Variable" Display="advanced" Required="false" Mask="false">http</Config>
+  <Config Name="MCP_HOST" Target="MCP_HOST" Default="10.10.10.50" Mode="" Description="bind address, one specific IP, never 0.0.0.0 - #360" Type="Variable" Display="advanced" Required="true" Mask="false">10.10.10.50</Config>
+  <Config Name="MCP_PORT" Target="MCP_PORT" Default="8078" Mode="" Description="bind port - #360" Type="Variable" Display="advanced" Required="true" Mask="false">8078</Config>
+  <Config Name="MCP_ALLOWED_HOSTS" Target="MCP_ALLOWED_HOSTS" Default="10.10.10.50" Mode="" Description="Host header allowlist - #334" Type="Variable" Display="advanced" Required="true" Mask="false">10.10.10.50</Config>
+  <Config Name="MCP_ALLOWED_CLIENTS" Target="MCP_ALLOWED_CLIENTS" Default="192.168.0.240" Mode="" Description="Source IP allowlist (vclaude02) - #334" Type="Variable" Display="advanced" Required="true" Mask="false">192.168.0.240</Config>
+  <Config Name="Config" Target="/config" Default="/mnt/user/appdata/unraid-mcp" Mode="ro" Description="http-token + unraid-api.key owned by uid 10078 mode 600, dir 700 - #334 #360" Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/unraid-mcp</Config>
+</Container>

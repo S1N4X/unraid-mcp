@@ -46,14 +46,17 @@ trimmed and `""` means unset, so empty Unraid template fields are harmless.
 
 | Env var | Code default | Image default | Meaning |
 |---|---|---|---|
-| `MCP_HOST` | `FASTMCP_HOST`, else `127.0.0.1` | — (`FASTMCP_HOST=0.0.0.0`) | Bind address |
-| `MCP_PORT` | `FASTMCP_PORT`, else `8000` | — (`FASTMCP_PORT=8000`) | Bind port (0–65535) |
+| `MCP_HOST` | `FASTMCP_HOST`, else `127.0.0.1` | — | Bind address |
+| `MCP_PORT` | `FASTMCP_PORT`, else `8000` | — | Bind port (0–65535) |
 | `MCP_AUTH_TOKEN_FILE` | — (required) | `/config/http-token` | Absolute path to the bearer token file (see below) |
 | `MCP_AUTH_TOKEN` | — | — | **Refused** at startup: environment values leak via `docker inspect` and `/proc` |
 | `MCP_ALLOW_UNAUTHENTICATED` | `0` | — | `1` disables auth; honoured only on a `127.0.0.1`, `::1` or `localhost` bind and ignored when a token file is set |
 | `MCP_ALLOWED_CLIENTS` | any source | — | Comma list of source IPs/CIDRs (IPv4-mapped IPv6 peers are matched as IPv4) |
 | `MCP_ALLOWED_HOSTS` | loopback bind: `localhost,127.0.0.1,[::1]`; other specific bind: the bind address; `0.0.0.0`/`::`: **required** | — | Comma list of accepted `Host` names/IPs, no port (matching is port-agnostic) |
 | `MCP_ALLOWED_ORIGINS` | none (any `Origin` header refused) | — | Comma list of exact `scheme://host[:port]` origins; requests without `Origin` pass |
+
+The image sets no bind, so without `MCP_HOST`/`MCP_PORT` it binds `127.0.0.1`
+on port `8000`.
 
 ## HTTP authentication
 
@@ -85,8 +88,8 @@ Generate a 256-bit token:
 `MCP_AUTH_TOKEN_FILE` (and `UNRAID_API_KEY_FILE`) must be:
 
 - an absolute path to a regular file,
-- mode `0600`, owned by the effective uid of the server process (root in the
-  container),
+- mode `0600`, owned by the effective uid of the server process (uid 10078 in
+  the container image),
 - non-empty UTF-8 text (surrounding whitespace is stripped).
 
 The token must also be at least 43 characters from the RFC 6750 b64token
@@ -113,20 +116,61 @@ bind.
 
 ### Example: container on monolith
 
+The canonical dockerMan template is [`deploy/my-unraid-mcp.xml`](deploy/my-unraid-mcp.xml).
+The container uses host networking, binds only `10.10.10.50:8078` and reads the
+API at `UNRAID_API_URL=http://127.0.0.1/graphql`.
+
+Why host networking: the old `br0.500` macvlan container (a dedicated
+`10.10.10.x` IP) could not reach its own host (macvlan host isolation), so
+every upstream read hung (#360). On the host network it reaches Unraid's nginx on `127.0.0.1:80`.
+
 ```bash
 UNRAID_TRANSPORT=http
-FASTMCP_HOST=0.0.0.0                       # image default
+UNRAID_API_URL=http://127.0.0.1/graphql
+MCP_HOST=10.10.10.50
+MCP_PORT=8078
+MCP_ALLOWED_HOSTS=10.10.10.50
+MCP_ALLOWED_CLIENTS=192.168.0.240
 MCP_AUTH_TOKEN_FILE=/config/http-token     # image default
 UNRAID_API_KEY_FILE=/config/unraid-api.key # image default; remove UNRAID_API_KEY
-MCP_ALLOWED_HOSTS=10.10.10.78
-MCP_ALLOWED_CLIENTS=192.168.0.240
 ```
+
+Run flags: `--network host --user 10078:10078 --read-only --cap-drop ALL
+--security-opt no-new-privileges`, with `/config` mounted read-only. The appdata
+directory is owned by `10078:10078` with mode `700`; `http-token` and
+`unraid-api.key` are owned by `10078:10078` with mode `600`.
+
+Deploy from this repo (dry run first, then for real; `MONOLITH` overrides the
+default `root@192.168.0.50`):
+
+```bash
+deploy/deploy.sh --backup-suffix YYYYMMDD-tag --dry-run
+deploy/deploy.sh --backup-suffix YYYYMMDD-tag
+```
+
+It builds the image, backs up the live template and autostart file, records
+the owners/modes of the appdata directory and both secrets
+(`/var/lib/docker/unraid-autostart.bak-<suffix>.owners`) and tags the running
+image `unraid-mcp:bak-<suffix>`, then ships the new image, installs the
+template, fixes secret ownership/modes, keeps `unraid-mcp` in autostart,
+rebuilds the container and verifies the listener is exactly `10.10.10.50:8078`
+and the container runs the image ID it built. If any step from the backup on
+fails it prints the backups and the restore commands (template, autostart,
+secret owners/modes back to the recorded ones — the previous image ran as
+root — `docker tag` back, rebuild).
 
 Check it from an allowed client:
 
 ```bash
-curl -s http://10.10.10.78:8000/health          # 200 {"status":"ok"}
-curl -s -o /dev/null -w '%{http_code}\n' -X POST http://10.10.10.78:8000/mcp  # 401
+curl -s http://10.10.10.50:8078/health          # 200 {"status":"ok"}
+curl -s -o /dev/null -w '%{http_code}\n' -X POST http://10.10.10.50:8078/mcp  # 401
+```
+
+Live HTTP smoke (token from `UNRAID_MCP_TOKEN_FILE`, default
+`~/.config/unraid-mcp/http-token`):
+
+```bash
+UNRAID_MCP_LIVE_URL=http://10.10.10.50:8078 uv run pytest tests/test_live_http.py --no-cov
 ```
 
 ### FastMCP native auth vs this guard
@@ -232,7 +276,14 @@ uv run pytest
 Live tests against a real Unraid server (read-only):
 
 ```bash
-UNRAID_LIVE=1 uv run --env-file .env pytest tests/test_live.py
+UNRAID_LIVE=1 uv run --env-file .env pytest tests/test_live.py --no-cov
+```
+
+Live HTTP smoke against a deployed server (token from `UNRAID_MCP_TOKEN_FILE`,
+default `~/.config/unraid-mcp/http-token`):
+
+```bash
+UNRAID_MCP_LIVE_URL=http://10.10.10.50:8078 uv run pytest tests/test_live_http.py --no-cov
 ```
 
 ## License
