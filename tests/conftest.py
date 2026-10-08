@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -21,6 +24,19 @@ def read_only_settings() -> Settings:
 @pytest.fixture()
 def write_settings() -> Settings:
     return Settings.from_env({**MINIMAL_ENV, "UNRAID_ALLOW_WRITES": "true"})
+
+
+@pytest.fixture()
+def make_secret_file(tmp_path: Path) -> Callable[..., str]:
+    """Factory writing *content* to a file with *mode*; returns its absolute path."""
+
+    def _make(content: str, mode: int = 0o600, name: str = "secret") -> str:
+        path = tmp_path / name
+        path.write_text(content, encoding="utf-8")
+        os.chmod(path, mode)
+        return str(path.resolve())
+
+    return _make
 
 
 def make_ok_transport(data: Any = None) -> httpx.MockTransport:

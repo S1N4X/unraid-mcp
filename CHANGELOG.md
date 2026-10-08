@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- HTTP bearer auth with source-IP, Host and Origin allowlists.
+- `/health` endpoint (GET/HEAD).
+- `UNRAID_API_KEY_FILE` to read the API key from a file.
+
+### Breaking
+
+- HTTP transport refuses to start without a token file.
+- A wildcard bind requires `MCP_ALLOWED_HOSTS`.
+- The image now defaults both `*_FILE` vars, so an `UNRAID_API_KEY` set in the
+  env must be removed.
+- FastMCP's native Host/Origin guard is pinned off.
+
 ## 0.1.0 — 2026-09-12
 
 Initial release.
