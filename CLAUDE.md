@@ -12,11 +12,12 @@ MCP server for the official Unraid GraphQL API (Unraid 7.3.2 / unraid-api 4.35.1
 
 ```bash
 uv sync                          # install deps
-uv run pytest                    # full suite (676 tests, ≥90% coverage gate)
+uv run pytest                    # full suite (686 tests, ≥90% coverage gate)
 uv run ruff check .              # lint
 uv run ruff format --check .     # format check
 uv run mypy                      # strict type check
-UNRAID_LIVE=1 uv run --env-file .env pytest tests/test_live.py  # live smoke (read-only)
+UNRAID_LIVE=1 uv run --env-file .env pytest tests/test_live.py --no-cov  # live smoke (read-only)
+UNRAID_MCP_LIVE_URL=http://10.10.10.50:8078 uv run pytest tests/test_live_http.py --no-cov  # live HTTP smoke of the deployed container
 ```
 
 ## Architecture
@@ -30,6 +31,7 @@ UNRAID_LIVE=1 uv run --env-file .env pytest tests/test_live.py  # live smoke (re
 - `domains/*.py` — one module per domain, each exports `ACTIONS: dict[str, Action]`
 - `server.py` — FastMCP wiring, write gate (two locks: env + confirm/elicitation answered exactly "yes"); the tool logs `unraid <domain>.<action> failed: <code>: <message>` and re-raises `UnraidError` as `ToolError(to_client_text())`, both scrubbed of the API key/bearer tokens (log fields control-char escaped). Non-`UnraidError` exceptions are not scrubbed (generic FastMCP text + `logger.exception` traceback)
 - `responses.py` — `cap_list()` + `finalize()` for bounded, valid-JSON responses
+- `deploy/` — `my-unraid-mcp.xml` (canonical monolith dockerMan template: host network, 10.10.10.50:8078, uid 10078, read-only root) + `deploy.sh --backup-suffix S [--dry-run]` (build, backup incl. secret owners + image tag, ship, install, verify listener + image ID; restore commands on failure)
 
 ## Safety
 
@@ -48,4 +50,7 @@ UNRAID_LIVE=1 uv run --env-file .env pytest tests/test_live.py  # live smoke (re
 - `test_client.py` — retries, timeouts, error mapping, redaction helpers (segment + substring keys, depth, body scrubbing, value_secrets)
 - `test_http_auth.py` — auth config loading and AuthGuard checks
 - `test_http_app.py` — HTTP app wiring end-to-end through the guard
+- `test_deploy_assets.py` — static checks of `deploy/my-unraid-mcp.xml`, `deploy.sh`'s bind and the Dockerfile
+- `test_deploy_dry_run.py` — `deploy.sh --dry-run` with fake docker/ssh: no calls, step order, exit 2 on bad suffix
 - `test_live.py` — opt-in (`UNRAID_LIVE=1`) read-only smoke against a real server
+- `test_live_http.py` — opt-in (`UNRAID_MCP_LIVE_URL`) HTTP smoke of a deployed server: `/health`, 401 without token, `health.ping`, `system.time`

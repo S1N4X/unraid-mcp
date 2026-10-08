@@ -109,7 +109,10 @@ Unraid supports fine-grained `RESOURCE:ACTION` permissions, so defence in depth 
 | `test_server.py` | Through the real FastMCP `Client`: errors arrive as JSON with `code`/`hint`/`details`, GraphQL `extensions` other than `code` are dropped (`smtpPass` never reaches the client), secrets in raw HTTP error bodies are redacted, the configured API key is absent from the error text (in `message` or under non-secret extension keys) and from the boundary log line, a newline in `action` cannot forge a log line, elicitation over a legacy connection (`"no"`/decline refuse, `"yes"` writes) and refusal on a 2026-07-28 connection. |
 | `test_responses.py` | `cap_list` count + byte budget, always ≥1 item, `limit<=0` returns all; truncation marker is valid JSON and stays under the cap. |
 | `test_settings.py` | `from_env` defaults, URL derivation, bool parsing (`true/1/yes`), missing-required errors name the variable, no import-time side effects (importing every module with a blank environ must not raise). |
+| `test_deploy_assets.py` | Static checks of `deploy/my-unraid-mcp.xml` (host network, bind equal to `deploy.sh`'s, hardening flags, read-only `/config`, no legacy vars) and the Dockerfile (uid 10078, venv `CMD`, `PYTHONDONTWRITEBYTECODE=1`, no bind defaults). |
+| `test_deploy_dry_run.py` | `deploy/deploy.sh --dry-run` with docker/ssh faked to fail: exit 0, no calls, the nine steps in order; a missing or invalid `--backup-suffix` exits 2. Skipped without bash. |
 | `test_live.py` | Opt-in via `UNRAID_LIVE=1`: read-only smoke against a real server (`health.ping`, `system.info`, `docker.list`). Skipped by default. |
+| `test_live_http.py` | Opt-in via `UNRAID_MCP_LIVE_URL`: HTTP smoke of a deployed server (`/health`, 401 without token, `health.ping`, `system.time`); token from `UNRAID_MCP_TOKEN_FILE` (default `~/.config/unraid-mcp/http-token`). Skipped by default. |
 
 Coverage gate: ≥90 % on `src/unraid_mcp`, enforced in CI. `ruff` + `mypy --strict` clean.
 
