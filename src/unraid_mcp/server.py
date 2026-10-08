@@ -9,6 +9,8 @@ from typing import Any, Protocol
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
 from fastmcp.server.elicitation import AcceptedElicitation
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 
 from unraid_mcp.client import UnraidClient
 from unraid_mcp.errors import (
@@ -149,5 +151,11 @@ def build_server(
             params=params,
             confirm=confirm,
         )
+
+    # Liveness probe; the HTTP AuthGuard exempts exactly GET/HEAD /health from the
+    # bearer check (Starlette answers HEAD for a GET route).  Unused on stdio.
+    @mcp.custom_route("/health", methods=["GET"])
+    async def health(request: Request) -> Response:
+        return JSONResponse({"status": "ok"})
 
     return mcp
