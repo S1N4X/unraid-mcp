@@ -9,9 +9,38 @@
 ## Key handling
 
 - The API key is sent only as an `X-API-Key` header over the configured URL.
-- Keys, tokens, secrets, and passwords are recursively redacted from all log
-  output and error messages.
-- No credentials are written to disk or included in MCP responses.
+- The client never logs requests, headers or response bodies. A failed tool
+  call logs one warning line, `unraid <domain>.<action> failed: <code>:
+  <message>` (no details, no traceback), with the API key and bearer tokens
+  scrubbed as below and control characters (newlines) escaped.
+- GraphQL error `extensions` are upstream-controlled: only
+  `extensions.code` (when a string) is forwarded to the client; every other
+  extension key is dropped before any redaction runs (allowlist).
+- In error results returned to the MCP client (`unraid_mcp.redaction`):
+  - `details` values are recursively redacted by **key name**: when any
+    segment of the key (split on non-alphanumerics and camelCase, singular or
+    plural) is `key`, `apikey`, `token`, `secret`, `password`, `passwd`,
+    `pwd`, `authorization`, `auth`, `cookie`, `session`, `credential`,
+    `bearer`, or when the key lowercased with non-alphanumerics removed
+    contains `password`, `passwd`, `secret`, `apikey`, `accesskey`,
+    `privatekey`, `sshkey`, `token`, `credential`, `authorization`, `cookie`,
+    `bearer` or `session` (so `apiKey`, `dbpassword`, `clientsecret` match;
+    `keyword`, `author` do not). Subtrees nested deeper than 20 levels are
+    replaced wholesale (fail closed).
+  - The configured API key (when at least 8 characters long) and
+    `Bearer <token>` strings are scrubbed **by value** from the whole error
+    text (`message`, `hint`, `details`, including truncated upstream HTTP
+    bodies).
+  - Limit: other secrets inside free text, or under key names matching
+    neither rule, are not detected and can reach the client.
+- No credentials are written to disk. For `UnraidError` failures (every
+  structured error), the configured API key (subject to the 8-character
+  minimum above) is never included in the client error text or in the
+  boundary warning line; other upstream secrets are masked only as described
+  above.
+- Scope limit: an unexpected non-`UnraidError` exception keeps FastMCP's
+  generic `Error calling tool 'unraid': <message>` text, and `server.py` logs
+  it with `logger.exception` (full traceback). Neither is scrubbed.
 - Prefer `UNRAID_API_KEY_FILE` over `UNRAID_API_KEY`. The file must be an
   absolute path to a regular file, mode `0600`, owned by the effective uid, and
   non-empty; otherwise the server refuses to start. Error messages name the
@@ -47,15 +76,19 @@ authentication"):
 - `UNRAID_ALLOW_WRITES` defaults to `0` (off). Write actions are refused at the
   server level unless explicitly enabled.
 - Every write action additionally requires an explicit `confirm=true` parameter
-  or an accepted MCP elicitation prompt.
+  or an accepted MCP elicitation prompt answered exactly `yes`.
 - For defence in depth, use a **VIEWER-role** API key so the Unraid API itself
   rejects mutations regardless of server configuration.
 
 ## Elicitation and confirmation
 
-Write actions that are flagged `destructive` describe the operation in an
-elicitation prompt the user must accept. If the MCP client does not support
-elicitation and `confirm` is not set, the request is refused.
+Without `confirm=true`, every write action asks for confirmation through an
+elicitation prompt with the choices `yes` / `no`. The write proceeds only when
+the prompt is accepted and the answer is exactly `yes` (case-sensitive, no
+trimming); accepting with `no` or any other value, declining, cancelling, or a
+client that does not support elicitation refuses the request and sends nothing
+to the Unraid API. FastMCP 4 does not offer elicitation on 2026-07-28
+connections, so there `confirm=true` is the only way to confirm a write.
 
 ## Reporting a vulnerability
 

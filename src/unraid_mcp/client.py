@@ -1,11 +1,14 @@
-"""GraphQL client with retries, error mapping, and secret redaction."""
+"""GraphQL client with retries and error mapping.
+
+Secret redaction of error details happens where errors leave the process
+(:meth:`unraid_mcp.errors.UnraidError.to_client_payload`).
+"""
 
 from __future__ import annotations
 
 import asyncio
 import logging
 import random
-import re
 from typing import Any
 
 import httpx
@@ -18,6 +21,8 @@ from unraid_mcp.errors import (
     UnauthorizedError,
     UpstreamError,
 )
+from unraid_mcp.redaction import redact as _redact  # noqa: F401  (kept for importers)
+from unraid_mcp.redaction import scrub_text, value_secrets
 from unraid_mcp.settings import Settings
 
 logger = logging.getLogger(__name__)
@@ -29,27 +34,11 @@ _RETRYABLE_STATUS = frozenset({502, 503, 504})
 _MAX_RETRIES = 2
 _BASE_DELAY = 0.5
 
-_SECRET_RE = re.compile(r"(key|token|secret|password|apikey)", re.IGNORECASE)
-
 # Timeout profiles: name -> read-timeout override
 _PROFILES: dict[str, int] = {
     "disk": 90,
     "logs": 90,
 }
-
-
-def _redact(obj: Any, *, _depth: int = 0) -> Any:
-    """Recursively redact sensitive values in dicts/lists."""
-    if _depth > 20:
-        return obj
-    if isinstance(obj, dict):
-        return {
-            k: "***REDACTED***" if _SECRET_RE.search(k) else _redact(v, _depth=_depth + 1)
-            for k, v in obj.items()
-        }
-    if isinstance(obj, list):
-        return [_redact(v, _depth=_depth + 1) for v in obj]
-    return obj
 
 
 def _is_mutation(document: str) -> bool:
@@ -69,8 +58,8 @@ def _map_graphql_error(error: dict[str, Any]) -> Exception:
     message = error.get("message", "Unknown GraphQL error")
     code = ""
     extensions = error.get("extensions")
-    if isinstance(extensions, dict):
-        code = extensions.get("code", "")
+    if isinstance(extensions, dict) and isinstance(extensions.get("code"), str):
+        code = extensions["code"]
 
     if code in {"UNAUTHENTICATED", "FORBIDDEN"}:
         return UnauthorizedError(message, hint="Check API key roles.")
@@ -80,7 +69,11 @@ def _map_graphql_error(error: dict[str, Any]) -> Exception:
         return UpstreamError(message, hint="Query validation failed upstream.")
     if code == "INTROSPECTION_DISABLED":
         return IntrospectionDisabledError(message)
-    return UpstreamError(message, details={"extensions": extensions})
+    # Extensions are upstream-controlled and may carry secrets under any key
+    # name: forward only the error code (allowlist), never the rest.
+    if code:
+        return UpstreamError(message, details={"extensions": {"code": code}})
+    return UpstreamError(message)
 
 
 class UnraidClient:
@@ -113,6 +106,14 @@ class UnraidClient:
 
     async def close(self) -> None:
         await self._http.aclose()
+
+    def _body_excerpt(self, response: httpx.Response) -> str:
+        """First 200 chars of *response* body with the API key and bearer tokens masked.
+
+        Uses :func:`value_secrets`, so keys shorter than 8 characters are not
+        scrubbed and the JSON-escaped form of the key is masked too.
+        """
+        return scrub_text(response.text, value_secrets(self._settings.api_key))[:200]
 
     async def __aenter__(self) -> UnraidClient:
         return self
@@ -174,11 +175,11 @@ class UnraidClient:
                 continue
 
             if response.status_code >= 400:
-                # Raw HTTP error bodies are truncated to 200 chars but not
-                # scanned for secrets (_redact only handles dicts/lists).
+                # Raw HTTP error bodies reach the client: scrub the API key and
+                # bearer tokens first, then truncate to 200 chars.
                 raise UpstreamError(
                     f"HTTP {response.status_code}",
-                    details={"body": response.text[:200]},
+                    details={"body": self._body_excerpt(response)},
                 )
 
             try:
@@ -186,7 +187,7 @@ class UnraidClient:
             except Exception as exc:
                 raise UpstreamError(
                     "Malformed JSON response",
-                    details={"body": response.text[:200]},
+                    details={"body": self._body_excerpt(response)},
                 ) from exc
 
             errors = body.get("errors")

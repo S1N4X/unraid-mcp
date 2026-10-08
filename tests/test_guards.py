@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -30,6 +31,18 @@ def _ok_transport(data: Any = None) -> httpx.MockTransport:
         return httpx.Response(200, content=body)
 
     return httpx.MockTransport(handler)
+
+
+def _recording_transport() -> tuple[httpx.MockTransport, list[httpx.Request]]:
+    """OK transport that records every request it receives."""
+    requests: list[httpx.Request] = []
+    body = json.dumps({"data": {}}).encode()
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(200, content=body)
+
+    return httpx.MockTransport(handler), requests
 
 
 def _settings(allow_writes: bool = False) -> Settings:
@@ -82,6 +95,67 @@ class TestElicitation:
         with pytest.raises(ConfirmationRequiredError):
             await handle_unraid("array", "start", s, _client(s), elicit=elicit)
 
+    @pytest.mark.parametrize(
+        "data",
+        [
+            "no",
+            None,
+            "",
+            "YES",  # exact match only: the client must return an offered choice
+            " yes",
+            "yes ",
+            True,
+            ["yes"],
+            {"value": "yes"},
+        ],
+    )
+    async def test_elicitation_accepted_without_yes_refuses(self, data: Any) -> None:
+        """Accepting the prompt with any answer other than exactly "yes" refuses."""
+        from fastmcp.server.elicitation import AcceptedElicitation
+
+        s = _settings(allow_writes=True)
+        transport, requests = _recording_transport()
+        client = UnraidClient(s, transport=transport)
+        elicit = AsyncMock(return_value=AcceptedElicitation(data=data))
+        with pytest.raises(ConfirmationRequiredError, match="not confirmed") as excinfo:
+            await handle_unraid("array", "start", s, client, elicit=elicit)
+        assert excinfo.value.hint is not None
+        assert requests == []  # no mutation reached the API
+
+    async def test_elicitation_yes_sends_mutation(self) -> None:
+        from fastmcp.server.elicitation import AcceptedElicitation
+
+        s = _settings(allow_writes=True)
+        transport, requests = _recording_transport()
+        client = UnraidClient(s, transport=transport)
+        elicit = AsyncMock(return_value=AcceptedElicitation(data="yes"))
+        await handle_unraid("array", "start", s, client, elicit=elicit)
+        assert len(requests) == 1
+        assert elicit.await_args is not None
+        assert elicit.await_args.args[1] == ["yes", "no"]
+
+    async def test_elicitation_cancelled(self) -> None:
+        from fastmcp.server.elicitation import CancelledElicitation
+
+        s = _settings(allow_writes=True)
+        transport, requests = _recording_transport()
+        client = UnraidClient(s, transport=transport)
+        elicit = AsyncMock(return_value=CancelledElicitation())
+        with pytest.raises(ConfirmationRequiredError):
+            await handle_unraid("array", "start", s, client, elicit=elicit)
+        assert requests == []
+
+    async def test_elicitation_declined_sends_nothing(self) -> None:
+        from fastmcp.server.elicitation import DeclinedElicitation
+
+        s = _settings(allow_writes=True)
+        transport, requests = _recording_transport()
+        client = UnraidClient(s, transport=transport)
+        elicit = AsyncMock(return_value=DeclinedElicitation())
+        with pytest.raises(ConfirmationRequiredError):
+            await handle_unraid("array", "start", s, client, elicit=elicit)
+        assert requests == []
+
     async def test_elicitation_toolerror(self) -> None:
         """ToolError from elicit maps to ConfirmationRequiredError."""
         from fastmcp.exceptions import ToolError
@@ -97,6 +171,22 @@ class TestElicitation:
         elicit = AsyncMock(side_effect=Exception("Elicitation not supported"))
         with pytest.raises(ConfirmationRequiredError):
             await handle_unraid("array", "start", s, _client(s), elicit=elicit)
+
+    async def test_elicitation_failure_is_logged(self, caplog: pytest.LogCaptureFixture) -> None:
+        """A failed elicit leaks no exception detail to the log and the caller is told to confirm.
+
+        The refusal itself is logged once at the tool boundary (test_server.py).
+        """
+        s = _settings(allow_writes=True)
+        elicit = AsyncMock(side_effect=RuntimeError("transport detail"))
+        with (
+            caplog.at_level(logging.WARNING, logger="unraid_mcp.server"),
+            pytest.raises(ConfirmationRequiredError) as exc_info,
+        ):
+            await handle_unraid("array", "start", s, _client(s), elicit=elicit)
+        assert "transport detail" not in caplog.text
+        assert "could not be shown" in exc_info.value.message
+        assert "confirm=True" in exc_info.value.message
 
 
 class TestNotImplemented:
