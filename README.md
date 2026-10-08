@@ -152,10 +152,16 @@ the pure-ASGI `AuthGuard` in front of routing) and `uvicorn_config=` (to force
 Two independent write locks prevent accidental mutations:
 
 1. **Server-level**: writes are refused unless `UNRAID_ALLOW_WRITES=1`. Default
-   is read-only. Refusal is a structured `write_disabled` error naming the env
-   var.
-2. **Call-level**: every write action requires `confirm=true` or an accepted MCP
-   elicitation prompt.
+   is read-only. Refusal is a structured `write_disabled` error whose `hint`
+   names the env var.
+2. **Call-level**: every write action requires `confirm=true` or an MCP
+   elicitation prompt (choices `yes` / `no`) that the user accepts **and**
+   answers `yes`. The match is exact and case-sensitive: accepting with `no`,
+   an empty or missing answer, or any other value (`YES`, ` yes`) refuses the
+   write, as do a declined or cancelled prompt. FastMCP 4 offers elicitation
+   only on initialize-handshake (legacy) connections; on a 2026-07-28
+   connection the prompt cannot be sent, so the write is refused unless
+   `confirm=true` is passed.
 
 For defence in depth, use a **VIEWER-role API key** so the Unraid API itself
 rejects mutations regardless of server configuration.
@@ -170,6 +176,48 @@ VM `forceStop`/`reset`, API-key mutations, OIDC, rclone, `updateSettings`, flash
 backup, plugin install/remove, GraphQL subscriptions.
 
 Each returns a structured `not_implemented` error naming the reason.
+
+## Errors
+
+A failed call returns an MCP tool error (`isError: true`) whose text is compact
+JSON:
+
+```json
+{"code":"write_disabled","message":"Write operations are disabled.","hint":"Set UNRAID_ALLOW_WRITES=1 to enable."}
+```
+
+`code` is always present (`write_disabled`, `confirmation_required`,
+`unknown_action`, `not_implemented`, `invalid_params`, `unauthorized`,
+`not_found`, `introspection_disabled`, `upstream_error`, `connection_failed`);
+`hint` and `details` appear when set. Redaction before the error leaves the
+server:
+
+- **GraphQL `extensions` allowlist**: of an upstream GraphQL error's
+  `extensions`, only `code` (when a string) is forwarded, as
+  `details.extensions.code`; every other extension key is dropped.
+- **By key name** (`details`, any depth): a dict value is replaced by
+  `***REDACTED***` when any segment of its key — split on non-alphanumerics
+  and camelCase, singular or plural — is `key`, `apikey`, `token`, `secret`,
+  `password`, `passwd`, `pwd`, `authorization`, `auth`, `cookie`, `session`,
+  `credential` or `bearer`, **or** when the key, lowercased with
+  non-alphanumerics removed, contains one of the unambiguous words
+  `password`, `passwd`, `secret`, `apikey`, `accesskey`, `privatekey`,
+  `sshkey`, `token`, `credential`, `authorization`, `cookie`, `bearer`,
+  `session`. So `apiKey`, `x-api-key`, `dbpassword`, `clientsecret`,
+  `sshkeys` match; `keyword`, `monkeyCount`, `author` do not. Subtrees deeper
+  than 20 levels are replaced wholesale.
+- **By value** (the whole error text — `message`, `hint`, `details`): the
+  configured API key (when at least 8 characters long) and `Bearer <token>`
+  strings are masked. The same scrubbing applies to the server's
+  `unraid <domain>.<action> failed: <code>: <message>` warning log line,
+  where control characters (newlines) are also escaped.
+
+Not detected: other secrets inside free text, or under key names that match
+neither rule (for example a database password embedded in a `dsn` URL).
+These guarantees cover structured (`UnraidError`) failures only. Unexpected
+(non-Unraid) exceptions keep FastMCP's generic
+`Error calling tool 'unraid': …` text and are logged with a full traceback;
+neither is scrubbed.
 
 ## Development
 

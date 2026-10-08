@@ -20,6 +20,7 @@ from unraid_mcp.errors import (
     UnraidError,
     WriteDisabledError,
 )
+from unraid_mcp.redaction import scrub_text, value_secrets
 from unraid_mcp.registry import ActionContext, execute_action, get_actions
 from unraid_mcp.responses import to_json
 from unraid_mcp.settings import Settings
@@ -27,10 +28,33 @@ from unraid_mcp.settings import Settings
 logger = logging.getLogger(__name__)
 
 
+def _log_safe(text: str) -> str:
+    """*text* with newlines and other control characters backslash-escaped."""
+    if text.isprintable():
+        return text
+    return "".join(ch if ch.isprintable() else repr(ch)[1:-1] for ch in text)
+
+
 class ElicitFn(Protocol):
     """Protocol matching ctx.elicit signature."""
 
     async def __call__(self, message: str, response_type: Any) -> Any: ...
+
+
+CONFIRM_YES = "yes"
+
+
+def is_confirmed(result: Any) -> bool:
+    """Return True only for an accepted elicitation whose answer is exactly ``"yes"``.
+
+    The prompt offers the choices ``["yes", "no"]``.  Accepting the prompt is not
+    consent by itself: FastMCP returns ``AcceptedElicitation(data="no")`` when the
+    user accepts and picks "no".  The match is exact and case-sensitive, with no
+    whitespace stripping: a client must send back one of the offered choices, and
+    anything else (``"no"``, ``"YES"``, ``" yes"``, ``""``, ``None``, non-strings,
+    declined or cancelled results) refuses the write.
+    """
+    return isinstance(result, AcceptedElicitation) and result.data == CONFIRM_YES
 
 
 async def handle_unraid(
@@ -77,23 +101,22 @@ async def handle_unraid(
             try:
                 result = await elicit(
                     f"Confirm write action '{domain}.{action}'?",
-                    ["yes", "no"],
+                    [CONFIRM_YES, "no"],
                 )
-                if isinstance(result, AcceptedElicitation):
-                    pass  # Accepted, proceed
-                else:
-                    raise ConfirmationRequiredError(
-                        f"'{domain}.{action}' requires confirmation. "
-                        "Pass confirm=True or accept the elicitation.",
-                    )
-            except (ToolError, Exception) as exc:
+            except Exception as exc:
                 # ToolError on modern connections, other exceptions on legacy
-                if isinstance(exc, (ConfirmationRequiredError, WriteDisabledError)):
-                    raise
+                # clients without elicitation support.  Not logged here: the
+                # tool boundary logs the resulting confirmation_required error.
                 raise ConfirmationRequiredError(
-                    f"'{domain}.{action}' requires confirmation. "
-                    "Pass confirm=True or accept the elicitation.",
+                    f"'{domain}.{action}' requires confirmation, but the confirmation "
+                    "prompt could not be shown. Pass confirm=True.",
                 ) from exc
+            if not is_confirmed(result):
+                raise ConfirmationRequiredError(
+                    f"'{domain}.{action}' was not confirmed: the elicitation was not "
+                    f"accepted with the answer '{CONFIRM_YES}'. Nothing was changed.",
+                    hint="Answer 'yes' to the confirmation prompt, or pass confirm=True.",
+                )
 
     request_ctx = ActionContext(
         client=client,
@@ -142,15 +165,33 @@ def build_server(
         Use health.capabilities to discover available actions.
         """
         client: UnraidClient = ctx.request_context.lifespan_context["client"]  # type: ignore[union-attr]
-        return await handle_unraid(
-            domain=domain,
-            action=action,
-            settings=settings,
-            client=client,
-            elicit=ctx.elicit,
-            params=params,
-            confirm=confirm,
-        )
+        try:
+            return await handle_unraid(
+                domain=domain,
+                action=action,
+                settings=settings,
+                client=client,
+                elicit=ctx.elicit,
+                params=params,
+                confirm=confirm,
+            )
+        except UnraidError as exc:
+            # FastMCP passes a ToolError's text to the client verbatim; any other
+            # exception becomes "Error calling tool 'unraid': <message>", which
+            # drops code, hint and details.  Details are redacted by key name;
+            # the configured API key and Bearer tokens are scrubbed by value
+            # from the whole text and from the log line.  domain, action and
+            # message are caller/upstream-influenced: control characters are
+            # escaped so they cannot forge extra log lines.
+            secrets = value_secrets(settings.api_key)
+            logger.warning(
+                "unraid %s.%s failed: %s: %s",
+                _log_safe(domain),
+                _log_safe(action),
+                exc.code,
+                _log_safe(scrub_text(exc.message, secrets)),
+            )
+            raise ToolError(scrub_text(exc.to_client_text(), secrets)) from exc
 
     # Liveness probe; the HTTP AuthGuard exempts exactly GET/HEAD /health from the
     # bearer check (Starlette answers HEAD for a GET route).  Unused on stdio.

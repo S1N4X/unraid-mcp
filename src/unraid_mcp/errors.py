@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
+
+from unraid_mcp.redaction import redact
 
 
 class UnraidError(Exception):
@@ -29,6 +32,20 @@ class UnraidError(Exception):
         if self.details:
             d["details"] = self.details
         return d
+
+    def to_client_payload(self) -> dict[str, Any]:
+        """:meth:`to_dict` with ``details`` passed through :func:`redact`.
+
+        This is the form that leaves the process (MCP tool error text).
+        """
+        d = self.to_dict()
+        if "details" in d:
+            d["details"] = redact(d["details"])
+        return d
+
+    def to_client_text(self) -> str:
+        """Compact JSON of :meth:`to_client_payload`, sent as the tool error text."""
+        return json.dumps(self.to_client_payload(), separators=(",", ":"), default=str)
 
 
 class UnauthorizedError(UnraidError):
